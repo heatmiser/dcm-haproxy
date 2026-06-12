@@ -16,7 +16,7 @@ RUN --mount=type=secret,id=rhsm_username \
       --username="$(cat /run/secrets/rhsm_username)" \
       --password="$(cat /run/secrets/rhsm_password)" \
       --auto-attach && \
-    dnf -y install haproxy curl && \
+    dnf -y install haproxy && \
     dnf clean all && \
     rm -rf /var/cache/dnf && \
     mkdir -p /etc/haproxy/conf.d && \
