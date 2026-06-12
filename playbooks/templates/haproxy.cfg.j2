@@ -1,0 +1,90 @@
+{{ ansible_managed | comment }}
+
+global
+    log         /dev/log local0
+    log         /dev/log local1 notice
+    maxconn     20000
+    daemon
+
+defaults
+    log                     global
+    mode                    tcp
+    option                  tcplog
+    option                  dontlognull
+    timeout connect         5s
+    timeout client          50s
+    timeout server          50s
+
+#------------------------------------------------------------------------------
+# Stats and health
+#------------------------------------------------------------------------------
+frontend stats
+    mode http
+    bind *:8404
+    stats enable
+    stats uri /haproxy?stats
+    stats refresh 10s
+    monitor-uri /healthz
+
+#------------------------------------------------------------------------------
+# OpenShift API — port 6443 — control plane nodes only
+#------------------------------------------------------------------------------
+frontend ocp_api
+    bind *:6443
+    default_backend ocp_api_backend
+
+backend ocp_api_backend
+    balance roundrobin
+    option tcp-check
+{% for node in dcm_haproxy_control_plane_nodes %}
+    server {{ node.name }} {{ node.ip }}:6443 check
+{% endfor %}
+
+#------------------------------------------------------------------------------
+# Machine Config Server — port 22623 — control plane nodes only
+#------------------------------------------------------------------------------
+frontend ocp_machine_config
+    bind *:22623
+    default_backend ocp_machine_config_backend
+
+backend ocp_machine_config_backend
+    balance roundrobin
+    option tcp-check
+{% for node in dcm_haproxy_control_plane_nodes %}
+    server {{ node.name }} {{ node.ip }}:22623 check
+{% endfor %}
+
+#------------------------------------------------------------------------------
+# Ingress HTTP — port 80 — ingress / worker nodes
+#------------------------------------------------------------------------------
+frontend ocp_ingress_http
+    mode http
+    option httplog
+    bind *:80
+    default_backend ocp_ingress_http_backend
+
+backend ocp_ingress_http_backend
+    mode http
+    balance roundrobin
+{% for node in dcm_haproxy_ingress_nodes %}
+    server {{ node.name }} {{ node.ip }}:80 check
+{% endfor %}
+
+#------------------------------------------------------------------------------
+# Ingress HTTPS — port 443 — ingress / worker nodes
+#------------------------------------------------------------------------------
+frontend ocp_ingress_https
+    bind *:443
+    default_backend ocp_ingress_https_backend
+
+backend ocp_ingress_https_backend
+    balance roundrobin
+    option tcp-check
+{% for node in dcm_haproxy_ingress_nodes %}
+    server {{ node.name }} {{ node.ip }}:443 check
+{% endfor %}
+
+#------------------------------------------------------------------------------
+# Day 3 extensions — populated via dcm_haproxy_extra_config var or conf.d/
+#------------------------------------------------------------------------------
+{{ dcm_haproxy_extra_config }}

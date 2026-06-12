@@ -1,0 +1,8 @@
+---
+profile: production
+exclude_paths:
+  - .github/
+  - playbooks/templates/
+warn_list:
+  - experimental
+...

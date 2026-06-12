@@ -1,0 +1,18 @@
+# ansible-lint and ansible-test local collection install cache
+.ansible/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+
+# Editor artifacts
+*.swp
+*.swo
+.DS_Store
+.vscode/
+.claude/
+
+# Local secrets and build artifacts
+ignore/

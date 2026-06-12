@@ -1,0 +1,49 @@
+---
+name: Build and Push Container Image
+
+on:  # yamllint disable-line rule:truthy
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    environment: deploy
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Log in to quay.io
+        uses: redhat-actions/podman-login@v1
+        with:
+          registry: quay.io
+          username: ${{ secrets.QUAY_USERNAME }}
+          password: ${{ secrets.QUAY_PASSWORD }}
+
+      - name: Build container image
+        run: |
+          podman build \
+            --secret id=rhsm_username,env=RHSM_USERNAME \
+            --secret id=rhsm_password,env=RHSM_PASSWORD \
+            -t dcm-haproxy:latest \
+            -t dcm-haproxy:${{ github.sha }} \
+            .
+        env:
+          RHSM_USERNAME: ${{ secrets.REDHAT_USERNAME }}
+          RHSM_PASSWORD: ${{ secrets.REDHAT_PASSWORD }}
+
+      - name: Push container image
+        uses: redhat-actions/push-to-registry@v2
+        with:
+          image: dcm-haproxy
+          tags: latest ${{ github.sha }}
+          registry: quay.io/${{ secrets.QUAY_USERNAME }}
+          username: ${{ secrets.QUAY_USERNAME }}
+          password: ${{ secrets.QUAY_PASSWORD }}
+...

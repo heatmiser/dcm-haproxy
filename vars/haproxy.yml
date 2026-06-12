@@ -1,0 +1,76 @@
+---
+# dcm-haproxy service configuration
+#
+# Vault-provided secrets (pass via -e @vault.yml):
+# elise_quadlet_registry_username: ""   # quay.io pull auth (if image is private)
+# elise_quadlet_registry_password: ""   # quay.io pull auth
+
+# --- Image reference ---
+dcm_haproxy_image: quay.io/s4v0/dcm-haproxy
+dcm_haproxy_image_tag: latest
+
+# --- HAProxy configuration ---
+dcm_haproxy_config_dir: /srv/containers/haproxy/config
+dcm_haproxy_conf_d_dir: /srv/containers/haproxy/conf.d
+dcm_haproxy_firewall_zone: public
+
+# Cluster topology — populated from config.yaml at first-boot render time.
+# Each entry: {name: <hostname>, ip: <address>}
+dcm_haproxy_control_plane_nodes: []
+dcm_haproxy_ingress_nodes: []
+
+# Inline haproxy.cfg additions for Day 3 extensions (appended verbatim).
+dcm_haproxy_extra_config: ""
+
+# --- elise.quadlet collection interface ---
+elise_quadlet_service_mode: pull
+elise_quadlet_env_file_path: ""
+elise_quadlet_env_vars: {}
+
+elise_quadlet_required_packages:
+  - "@container-management"
+  - firewalld
+
+elise_quadlet_firewall_ports:
+  - port: "80/tcp"
+    zone: "{{ dcm_haproxy_firewall_zone }}"
+    permanent: true
+    state: enabled
+  - port: "443/tcp"
+    zone: "{{ dcm_haproxy_firewall_zone }}"
+    permanent: true
+    state: enabled
+  - port: "6443/tcp"
+    zone: "{{ dcm_haproxy_firewall_zone }}"
+    permanent: true
+    state: enabled
+  - port: "22623/tcp"
+    zone: "{{ dcm_haproxy_firewall_zone }}"
+    permanent: true
+    state: enabled
+  - port: "8404/tcp"
+    zone: "{{ dcm_haproxy_firewall_zone }}"
+    permanent: true
+    state: enabled
+
+elise_quadlet_registry: ""
+
+elise_quadlet_network: {}
+elise_quadlet_pod: {}
+elise_quadlet_volumes: []
+
+elise_quadlet_containers:
+  - name: dcm-haproxy
+    description: HAProxy load balancer for OCP API and Ingress VIPs
+    image: "{{ dcm_haproxy_image }}:{{ dcm_haproxy_image_tag }}"
+    network_mode: host
+    volumes:
+      - "{{ dcm_haproxy_config_dir }}/haproxy.cfg:/etc/haproxy/haproxy.cfg:ro,Z"
+      - "{{ dcm_haproxy_conf_d_dir }}:/etc/haproxy/conf.d:ro,Z"
+    health:
+      cmd: "curl -sf http://127.0.0.1:8404/healthz"
+      interval: 30s
+      retries: 3
+      timeout: 10s
+    start_order: 1
+...

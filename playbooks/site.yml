@@ -1,0 +1,38 @@
+---
+- name: Deploy HAProxy load balancer
+  hosts: all
+  become: true
+  gather_facts: true
+  vars_files:
+    - "{{ playbook_dir }}/../vars/haproxy.yml"
+
+  pre_tasks:
+    - name: Ensure HAProxy config directory exists
+      ansible.builtin.file:
+        path: "{{ dcm_haproxy_config_dir }}"
+        state: directory
+        mode: "0755"
+
+    - name: Ensure HAProxy conf.d directory exists
+      ansible.builtin.file:
+        path: "{{ dcm_haproxy_conf_d_dir }}"
+        state: directory
+        mode: "0755"
+
+  tasks:
+    - name: Deploy HAProxy Quadlet units
+      ansible.builtin.include_role:
+        name: elise.quadlet.deploy
+
+    - name: Render HAProxy configuration
+      ansible.builtin.include_tasks:
+        file: "{{ playbook_dir }}/../tasks/render_conf.yml"
+
+    - name: Start HAProxy service
+      ansible.builtin.include_role:
+        name: elise.quadlet.start
+
+    - name: Validate HAProxy deployment
+      ansible.builtin.include_role:
+        name: elise.quadlet.validate
+...
